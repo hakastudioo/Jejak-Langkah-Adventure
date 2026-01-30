@@ -3,7 +3,7 @@ import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { Registration, AdminSettings } from '../types';
 import * as XLSX from 'xlsx';
 import { 
-  RefreshCw, Download, Search, X, Eye, 
+  RefreshCw, Download, Search, X, 
   ShieldCheck, Activity, Database, Server, 
   Terminal, CheckCircle2, HelpCircle, Copy, Check, ExternalLink, Image as ImageIcon, Link2, Bug
 } from 'lucide-react';
@@ -101,6 +101,7 @@ const AdminDashboard: React.FC<DashboardProps> = ({
         setCloudData(newData);
       }
     } catch (err) {
+      // FIX TS18046: Narrowing the catch variable type
       const error = err instanceof Error ? err : new Error(String(err));
       addLog(`Sync Error: ${error.message}`, 'warning');
       if (isDebugMode) addLog(`[DEBUG] Stack: ${error.stack || 'No stack trace'}`, 'warning');

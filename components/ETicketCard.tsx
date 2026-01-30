@@ -54,22 +54,20 @@ const ETicketCard: React.FC<ETicketCardProps> = ({ registration }) => {
     setIsGenerating(true);
     
     try {
-      // Tunggu render stabil
-      await new Promise(resolve => setTimeout(resolve, 600));
-      
+      await new Promise(resolve => setTimeout(resolve, 800));
       const element = ticketRef.current;
       
       const canvas = await html2canvas(element, { 
-        scale: 4, // Ultra high resolution
+        scale: 4,
         useCORS: true, 
         backgroundColor: '#ffffff',
         logging: false,
         allowTaint: false,
-        windowWidth: 1200, // Simulasi lebar layar desktop saat capture
+        windowWidth: 1200,
         onclone: (clonedDoc) => {
           const el = clonedDoc.getElementById('ticket-capture-area');
           if (el) {
-            el.style.width = '800px'; // Paksa lebar tiket agar tidak gepeng/terpotong
+            el.style.width = '800px';
             el.style.height = 'auto';
             el.style.overflow = 'visible';
             el.style.borderRadius = '0px';
@@ -82,11 +80,9 @@ const ETicketCard: React.FC<ETicketCardProps> = ({ registration }) => {
 
       const imgData = canvas.toDataURL('image/png', 1.0);
       const pdf = new jsPDF('p', 'mm', 'a4');
-      
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      const margin = 10;
+      const margin = 12;
       const usableWidth = pdfWidth - (margin * 2);
       const contentHeight = (canvas.height * usableWidth) / canvas.width;
       
@@ -95,7 +91,6 @@ const ETicketCard: React.FC<ETicketCardProps> = ({ registration }) => {
       let posX = margin;
       let posY = margin;
 
-      // Jika tinggi melebihi A4, perkecil agar pas satu halaman
       if (finalHeight > (pdfHeight - margin * 2)) {
         finalHeight = pdfHeight - (margin * 2);
         finalWidth = (canvas.width * finalHeight) / canvas.height;
@@ -103,7 +98,7 @@ const ETicketCard: React.FC<ETicketCardProps> = ({ registration }) => {
       }
 
       pdf.addImage(imgData, 'PNG', posX, posY, finalWidth, finalHeight, undefined, 'FAST');
-      pdf.save(`ETicket-${registration.mountain.replace(/\s+/g, '-')}-${registration.id.toString().slice(-6)}.pdf`);
+      pdf.save(`ETicket-${registration.mountain.replace(/\s+/g, '-')}-${registration.fullName.substring(0, 10).replace(/\s+/g, '')}.pdf`);
     } catch (error) {
       console.error("PDF Generation Error:", error);
     } finally {
@@ -113,24 +108,23 @@ const ETicketCard: React.FC<ETicketCardProps> = ({ registration }) => {
 
   const formatDateRange = (startStr: string, endStr?: string) => {
     if (!startStr) return "-";
-    const start = new Date(startStr);
     const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
+    const start = new Date(startStr);
     const startFormatted = start.toLocaleDateString('id-ID', options);
-    if (!endStr) return startFormatted;
+    if (!endStr || endStr === startStr) return startFormatted;
     const end = new Date(endStr);
     return `${startFormatted} - ${end.toLocaleDateString('id-ID', options)}`;
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-8">
-      {/* Scrollable container for mobile preview */}
+    <div className="w-full max-w-3xl mx-auto space-y-8 animate-in fade-in duration-1000">
       <div className="w-full overflow-x-auto pb-4 custom-scrollbar">
         <div 
           ref={ticketRef} 
           id="ticket-capture-area"
           className="bg-white text-slate-900 rounded-[2rem] shadow-2xl overflow-hidden flex flex-col border border-slate-200 min-w-[750px] mx-auto"
         >
-          {/* Top Header Section */}
+          {/* Header Tiket */}
           <div className="bg-brand-red p-10 text-white relative">
             <div className="absolute top-[-10%] right-[-5%] w-64 h-64 bg-black/10 rounded-full blur-3xl"></div>
             <div className="relative z-10 flex justify-between items-center">
@@ -150,29 +144,26 @@ const ETicketCard: React.FC<ETicketCardProps> = ({ registration }) => {
             </div>
           </div>
 
-          {/* Main Content Area */}
           <div className="p-12 space-y-12 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
-            {/* Participant Name */}
             <div className="space-y-2 border-l-4 border-brand-red pl-6">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Peserta Ekspedisi</span>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Peserta Ekspedisi Resmi</span>
               <h3 className="text-5xl font-black text-slate-900 uppercase italic tracking-tighter leading-none">
                 {registration.fullName}
               </h3>
             </div>
 
-            {/* Core Info Grid */}
             <div className="grid grid-cols-2 gap-12 pt-4">
               <div className="space-y-2">
                 <div className="flex items-center gap-2 mb-1">
                   <MapPin size={16} className="text-brand-red" />
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Destinasi</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Gunung Destinasi</span>
                 </div>
                 <p className="text-3xl font-black text-brand-red uppercase italic tracking-tight">{registration.mountain}</p>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 mb-1">
                   <Calendar size={16} className="text-brand-red" />
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Jadwal</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Jadwal Keberangkatan</span>
                 </div>
                 <p className="text-2xl font-black text-slate-900 italic tracking-tight">
                   {formatDateRange(registration.startDate, registration.endDate)}
@@ -180,25 +171,23 @@ const ETicketCard: React.FC<ETicketCardProps> = ({ registration }) => {
               </div>
             </div>
 
-            {/* Service Details */}
             <div className="grid grid-cols-3 gap-8 py-8 border-y border-slate-100 bg-slate-50/50 px-6 rounded-2xl">
               <div className="space-y-1">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Kategori</span>
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Kategori Layanan</span>
                 <p className="font-black text-base text-slate-800 uppercase italic">{registration.packageCategory}</p>
               </div>
               <div className="space-y-1">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Paket</span>
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Paket Pilihan</span>
                 <p className="font-black text-base text-slate-800 uppercase italic">{registration.tripPackage}</p>
               </div>
               <div className="space-y-1 text-right">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</span>
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Verifikasi Sistem</span>
                 <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-600 rounded-lg text-[10px] font-black uppercase italic border border-green-200">
                   <ShieldCheck size={12} /> {registration.status}
                 </div>
               </div>
             </div>
 
-            {/* Contact & Footer */}
             <div className="pt-4 flex items-end justify-between border-t border-dashed border-slate-200 pt-10">
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
@@ -217,31 +206,28 @@ const ETicketCard: React.FC<ETicketCardProps> = ({ registration }) => {
 
               <div className="flex flex-col items-center gap-2 bg-white p-4 border border-slate-100 rounded-2xl shadow-sm">
                  <QrCode size={64} className="text-slate-900 opacity-20" />
-                 <span className="text-[7px] font-black uppercase text-slate-400 tracking-widest">Verify Offline</span>
+                 <span className="text-[7px] font-black uppercase text-slate-400 tracking-widest">Cloud Sync Active</span>
               </div>
             </div>
 
-            {/* Legal Notice */}
             <div className="bg-slate-900 p-8 rounded-[2rem] text-white/50 space-y-3">
                <div className="flex items-center gap-2 text-white">
                   <Info size={16} className="text-brand-red" />
-                  <span className="text-[10px] font-black uppercase tracking-widest italic">Ketentuan Penting</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest italic">Informasi Penting Peserta</span>
                </div>
                <p className="text-[9px] font-medium leading-relaxed uppercase tracking-wider italic">
-                 1. Tiket ini merupakan bukti pendaftaran resmi. 2. Harap membawa KTP asli saat keberangkatan. 3. Panitia berhak membatalkan pendaftaran jika data tidak sesuai. 4. Dilarang merusak ekosistem selama pendakian.
+                 1. Simpan dokumen ini sebagai bukti pendaftaran resmi. 2. Harap tunjukkan dokumen ini (digital/cetak) saat proses verifikasi di meeting point. 3. Pastikan kondisi fisik prima sebelum keberangkatan. 4. Mari lestarikan alam, jangan tinggalkan apapun selain jejak.
                </p>
             </div>
           </div>
           
-          {/* Bottom Branding Strip */}
           <div className="bg-slate-100 px-12 py-4 flex justify-between items-center">
-             <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.3em]">Jejak Langkah Adventure © 2024</span>
-             <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.3em]">v1.5.0 Secure Access</span>
+             <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.3em]">Jejak Langkah Adventure © 2025</span>
+             <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.3em]">Powered by SummitOS v1.7</span>
           </div>
         </div>
       </div>
 
-      {/* Action Button */}
       <div className="px-1">
         <Button 
           onClick={handleDownloadPDF} 
@@ -250,11 +236,8 @@ const ETicketCard: React.FC<ETicketCardProps> = ({ registration }) => {
           className="italic py-6 shadow-brand text-lg"
         >
           <Download size={24} className="group-hover:translate-y-1 transition-transform" />
-          <span>Unduh Tiket (PDF HD)</span>
+          <span>Simpan Tiket (Kualitas HD)</span>
         </Button>
-        <p className="text-center mt-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">
-          * Gunakan PDF ini sebagai akses masuk saat meeting point.
-        </p>
       </div>
     </div>
   );
