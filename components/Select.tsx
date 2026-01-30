@@ -8,15 +8,15 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
 }
 
 const Select: React.FC<SelectProps> = ({ label, options, error, ...props }) => {
-  const baseClasses = `w-full appearance-none px-8 py-5 border-2 rounded-3xl outline-none transition-all cursor-pointer font-sans font-black text-sm text-white pr-14 ${
+  const baseClasses = `w-full appearance-none px-6 py-4 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none transition-all cursor-pointer font-sans font-bold text-sm text-slate-900 dark:text-white pr-14 bg-white dark:bg-slate-950 ${
     error 
-      ? "border-red-500/50 ring-4 ring-red-500/10" 
-      : "border-white/5 bg-navy-950/40 focus:border-brand-red/50 focus:bg-navy-950 focus:ring-4 focus:ring-brand-red/5 shadow-inner"
+      ? "border-brand-red ring-4 ring-brand-red/10" 
+      : "focus:border-brand-red focus:ring-4 focus:ring-brand-red/5"
   }`;
 
   return (
-    <div className="flex flex-col gap-3 w-full group">
-      <label className="text-[10px] font-black text-slate-500 group-focus-within:text-brand-red uppercase tracking-[0.3em] px-2 transition-colors">
+    <div className="flex flex-col gap-2 w-full group">
+      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 group-focus-within:text-brand-red uppercase tracking-widest px-2 transition-colors">
         {label}
       </label>
       <div className="relative">
@@ -24,22 +24,22 @@ const Select: React.FC<SelectProps> = ({ label, options, error, ...props }) => {
           {...props}
           className={baseClasses}
         >
-          <option value="" disabled className="bg-navy-900 text-slate-500">Pilih Destinasi...</option>
+          <option value="" disabled className="dark:bg-slate-900">Pilih Gunung...</option>
           {options.map(opt => (
-            <option key={opt} value={opt} className="bg-navy-900 text-white py-4 font-sans font-black">
+            <option key={opt} value={opt} className="text-slate-900 dark:text-white py-4 font-sans font-bold dark:bg-slate-900">
               {opt}
             </option>
           ))}
         </select>
-        <div className="absolute right-7 top-1/2 -translate-y-1/2 pointer-events-none text-slate-600 group-focus-within:text-brand-red transition-all duration-300">
+        <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300 dark:text-slate-700 group-focus-within:text-brand-red transition-colors">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5" d="M19 9l-7 7-7-7" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" />
           </svg>
         </div>
       </div>
       {error && (
-        <span className="text-[9px] font-black text-red-500 uppercase tracking-widest px-2 mt-1">
-          ! {error}
+        <span className="text-[10px] font-bold text-brand-red uppercase px-2">
+          {error}
         </span>
       )}
     </div>

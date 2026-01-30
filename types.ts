@@ -8,6 +8,7 @@ export interface PersonalData {
   packageCategory: string; 
   tripPackage: string;      
   startDate: string;
+  endDate?: string;
   climberCode?: string;
   identityImage?: string;
 }
