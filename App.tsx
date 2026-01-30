@@ -25,10 +25,14 @@ const PAKET_OPTIONS = ["PAKET A", "PAKET B", "REGULER"];
 
 const BrandLogo = ({ className = "w-6 h-6" }) => (
   <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path d="M50 15L85 85H15L50 15Z" fill="currentColor" />
-    <path d="M50 40L68 85H32L50 40Z" fill="black" fillOpacity="0.25" />
-    <path d="M42 75L58 75" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
-    <path d="M46 65L54 65" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+    <circle cx="50" cy="50" r="48" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" opacity="0.3"/>
+    <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="1" opacity="0.5"/>
+    <path d="M50 20L85 80H15L50 20Z" fill="currentColor" fillOpacity="0.1" />
+    <path d="M50 25L75 70H25L50 25Z" fill="currentColor" />
+    <path d="M35 55L50 30L65 55L50 45L35 55Z" fill="black" fillOpacity="0.2" />
+    <path d="M50 25L55 35H45L50 25Z" fill="white" fillOpacity="0.4" />
+    <path d="M30 80C30 80 40 60 50 60C60 60 70 80 70 80" stroke="white" strokeWidth="4" strokeLinecap="round" opacity="0.8"/>
+    <circle cx="50" cy="22" r="3" fill="white" className="animate-pulse" />
   </svg>
 );
 
