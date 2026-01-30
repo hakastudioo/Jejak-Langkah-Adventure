@@ -1,0 +1,7 @@
+{
+  "name": "JEJAK LANGKAH ADVENTURE",
+  "description": "Aplikasi Pendaftaran Peserta Open Trip Jejak Langkah Adventure",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
