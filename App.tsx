@@ -435,7 +435,7 @@ const App: React.FC = () => {
         onConfirm={handleFinalConfirm}
         data={formData}
         isSending={isSending}
-        bankInfo={{ bankName: "BCA", accountNumber: "87766401498", accountName: "JEJAK LANGKAH ADVENTURE" }}
+        bankInfo={{ bankName: "BRI", accountNumber: "570401009559504", accountName: "ILHAM FADHILAH" }}
       />
 
       <SuccessModal isOpen={isSuccessModalOpen} onClose={() => setIsSuccessModalOpen(false)} data={lastReg} />

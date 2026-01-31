@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 import { 
   RefreshCw, Download, Search, X, 
   ShieldCheck, Activity, Database, Server, 
-  Terminal, CheckCircle2, HelpCircle, Copy, Check, ExternalLink, Image as ImageIcon, Link2, Bug
+  Terminal, CheckCircle2, HelpCircle, Copy, Check, ExternalLink, Image as ImageIcon, Link2, Bug, AlertTriangle
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -20,7 +20,7 @@ interface SystemLog {
   id: string;
   msg: string;
   time: string;
-  type: 'info' | 'success' | 'warning' | 'debug';
+  type: 'info' | 'success' | 'warning' | 'debug' | 'error';
 }
 
 const AdminDashboard: React.FC<DashboardProps> = ({ 
@@ -42,7 +42,7 @@ const AdminDashboard: React.FC<DashboardProps> = ({
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const prevCloudIds = useRef<Set<number>>(new Set());
 
-  const addLog = useCallback((msg: string, type: 'info' | 'success' | 'warning' | 'debug' = 'info') => {
+  const addLog = useCallback((msg: string, type: 'info' | 'success' | 'warning' | 'debug' | 'error' = 'info') => {
     if (type === 'debug' && !isDebugMode) return;
 
     const newLog = {
@@ -66,13 +66,7 @@ const AdminDashboard: React.FC<DashboardProps> = ({
       spreadsheetId: settings.spreadsheetId
     };
 
-    if (isDebugMode) {
-      addLog(`[DEBUG] POST Request: ${settings.googleScriptUrl?.substring(0, 40)}...`, 'debug');
-      addLog(`[DEBUG] Payload: ${JSON.stringify(payload)}`, 'debug');
-    }
-
     try {
-      const startTime = Date.now();
       const response = await fetch(settings.googleScriptUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
@@ -81,15 +75,15 @@ const AdminDashboard: React.FC<DashboardProps> = ({
       
       const result = await response.json();
       
-      if (isDebugMode) {
-        const duration = Date.now() - startTime;
-        addLog(`[DEBUG] Response received in ${duration}ms`, 'debug');
-        addLog(`[DEBUG] Raw Response: ${JSON.stringify(result).substring(0, 100)}...`, 'debug');
-      }
-
       if (result.status === 'success' && Array.isArray(result.data)) {
         const newData: Registration[] = result.data;
         
+        // Check for authorization errors in data
+        const authError = newData.find(r => r.identityImage?.includes('ERROR: Buka Apps Script'));
+        if (authError) {
+          addLog("DETEKSI ERROR: Beberapa data identitas gagal diunggah karena Apps Script butuh otorisasi Drive.", "error");
+        }
+
         if (prevCloudIds.current.size > 0) {
           const newEntries = newData.filter(r => !prevCloudIds.current.has(r.id));
           newEntries.forEach(entry => {
@@ -101,14 +95,12 @@ const AdminDashboard: React.FC<DashboardProps> = ({
         setCloudData(newData);
       }
     } catch (err) {
-      // FIX TS18046: Narrowing the catch variable type
       const error = err instanceof Error ? err : new Error(String(err));
       addLog(`Sync Error: ${error.message}`, 'warning');
-      if (isDebugMode) addLog(`[DEBUG] Stack: ${error.stack || 'No stack trace'}`, 'warning');
     } finally {
       if (isManual) setIsLoading(false);
     }
-  }, [settings.googleScriptUrl, settings.spreadsheetId, addLog, isDebugMode]);
+  }, [settings.googleScriptUrl, settings.spreadsheetId, addLog]);
 
   useEffect(() => {
     fetchFromCloud();
@@ -143,13 +135,6 @@ const AdminDashboard: React.FC<DashboardProps> = ({
 
   const handleActionStatus = async (id: number, status: string, name: string) => {
     if (onUpdateStatus) {
-      const payload = { action: 'UPDATE_STATUS', id, status };
-      
-      if (isDebugMode) {
-        addLog(`[DEBUG] Updating Status for ${name}...`, 'debug');
-        addLog(`[DEBUG] Payload: ${JSON.stringify(payload)}`, 'debug');
-      }
-
       addLog(`Memperbarui status ${name}...`, 'info');
       await onUpdateStatus(id, status);
       addLog(`Status ${name} -> ${status}`, 'success');
@@ -168,6 +153,9 @@ const AdminDashboard: React.FC<DashboardProps> = ({
       window.open(identity, '_blank');
     } else if (identity.startsWith('data:image')) {
       setPreviewImage(identity);
+    } else if (identity.includes('ERROR:')) {
+      addLog('Error deteksi: Skrip butuh otorisasi DriveApp di editor Apps Script.', 'error');
+      alert(identity);
     } else {
       addLog('Format identitas tidak valid atau kosong', 'warning');
     }
@@ -191,14 +179,10 @@ const AdminDashboard: React.FC<DashboardProps> = ({
         
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => {
-              const newState = !isDebugMode;
-              setIsDebugMode(newState);
-              addLog(`Debug Mode: ${newState ? 'AKTIF' : 'NON-AKTIF'}`, newState ? 'success' : 'info');
-            }}
+            onClick={() => setIsDebugMode(!isDebugMode)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all ${isDebugMode ? 'bg-purple-500/20 border-purple-500 text-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.3)]' : 'bg-white/5 border-white/10 text-white/30 hover:text-white'}`}
           >
-            <Bug size={16} className={isDebugMode ? 'animate-pulse' : ''} />
+            <Bug size={16} />
             <span className="text-[9px] font-black uppercase tracking-[0.2em] hidden md:block">Debug Mode</span>
           </button>
 
@@ -230,6 +214,15 @@ const AdminDashboard: React.FC<DashboardProps> = ({
           {activeTab === 'monitor' && (
             <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 animate-in slide-in-from-bottom-4 duration-500">
                <div className="xl:col-span-3 space-y-6">
+                  {logs.some(l => l.type === 'error') && (
+                    <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-2xl flex items-center gap-4 text-red-500 animate-pulse">
+                       <AlertTriangle size={24} />
+                       <div className="text-[10px] font-black uppercase tracking-widest leading-relaxed">
+                          Sistem mendeteksi error otorisasi Google Drive. Silakan buka Editor Apps Script dan jalankan fungsi 'triggerAuth' secara manual.
+                       </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="bg-navy-900 border border-white/5 p-8 rounded-[2rem] space-y-1">
                       <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">Database Size</span>
@@ -288,7 +281,7 @@ const AdminDashboard: React.FC<DashboardProps> = ({
                               )}
                               <button 
                                 onClick={() => openIdentity(reg.identityImage || '')} 
-                                className="p-3 bg-white/5 text-white/30 hover:text-white rounded-xl flex items-center gap-2 transition-all"
+                                className={`p-3 rounded-xl flex items-center gap-2 transition-all ${reg.identityImage?.includes('ERROR') ? 'bg-red-500 text-white animate-pulse' : 'bg-white/5 text-white/30 hover:text-white'}`}
                                 title="Lihat Identitas"
                               >
                                 {reg.identityImage?.startsWith('http') ? <Link2 size={16} /> : <ImageIcon size={16} />}
@@ -316,6 +309,7 @@ const AdminDashboard: React.FC<DashboardProps> = ({
                               <div className={`w-1 h-1 rounded-full ${
                                 log.type === 'success' ? 'bg-green-500' : 
                                 log.type === 'warning' ? 'bg-brand-red' : 
+                                log.type === 'error' ? 'bg-red-600' :
                                 log.type === 'debug' ? 'bg-purple-500' :
                                 'bg-blue-500'
                               }`}></div>
@@ -323,6 +317,7 @@ const AdminDashboard: React.FC<DashboardProps> = ({
                             <p className={`text-[10px] leading-relaxed break-words ${
                               log.type === 'success' ? 'text-green-500' : 
                               log.type === 'warning' ? 'text-brand-red' : 
+                              log.type === 'error' ? 'text-red-400 font-black italic' :
                               log.type === 'debug' ? 'text-purple-400 font-bold' :
                               'text-white/50'
                             }`}>
@@ -386,10 +381,10 @@ const AdminDashboard: React.FC<DashboardProps> = ({
                          <td className="px-8 py-6">
                            <button 
                              onClick={() => openIdentity(reg.identityImage || '')} 
-                             className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/5 rounded-lg text-white/40 hover:text-brand-red hover:bg-brand-red/10 transition-all font-black uppercase text-[9px] italic"
+                             className={`flex items-center gap-2 px-3 py-1.5 border rounded-lg transition-all font-black uppercase text-[9px] italic ${reg.identityImage?.includes('ERROR') ? 'bg-red-500/20 border-red-500 text-red-500 animate-pulse' : 'bg-white/5 border-white/5 text-white/40 hover:text-brand-red hover:bg-brand-red/10'}`}
                            >
                              {reg.identityImage?.startsWith('http') ? <Link2 size={12} /> : <ImageIcon size={12} />}
-                             {reg.identityImage?.startsWith('http') ? 'Cloud Link' : 'Local View'}
+                             {reg.identityImage?.startsWith('http') ? 'Cloud Link' : reg.identityImage?.includes('ERROR') ? 'AUTH ERROR' : 'Local View'}
                            </button>
                          </td>
                          <td className="px-8 py-6">
@@ -442,9 +437,6 @@ const AdminDashboard: React.FC<DashboardProps> = ({
                           onChange={e => setSettings({...settings, spreadsheetId: e.target.value})} 
                           className="w-full px-6 py-5 bg-navy-950 border-2 border-white/5 rounded-2xl text-xs font-bold outline-none focus:border-brand-red transition-all placeholder:text-navy-800" 
                         />
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-focus-within/input:opacity-100 transition-opacity">
-                           <Database size={16} className="text-brand-red" />
-                        </div>
                       </div>
                     </div>
                     
@@ -463,9 +455,6 @@ const AdminDashboard: React.FC<DashboardProps> = ({
                           onChange={e => setSettings({...settings, googleScriptUrl: e.target.value})} 
                           className="w-full px-6 py-5 bg-navy-950 border-2 border-white/5 rounded-2xl text-xs font-bold outline-none focus:border-brand-red transition-all placeholder:text-navy-800" 
                         />
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-focus-within/input:opacity-100 transition-opacity">
-                           <ExternalLink size={16} className="text-brand-red" />
-                        </div>
                       </div>
                     </div>
 
@@ -502,9 +491,6 @@ const AdminDashboard: React.FC<DashboardProps> = ({
                          <p className="text-[10px] text-white/40 leading-relaxed font-medium">
                            Salin bagian unik dari URL Google Sheets Anda.
                          </p>
-                         <div className="bg-navy-950 border border-white/5 p-4 rounded-xl text-[9px] font-mono text-white/30 break-all leading-relaxed">
-                           spreadsheets/d/<span className="text-brand-red bg-brand-red/10 px-1 rounded font-black italic">ID_SPREADSHEET</span>/edit
-                         </div>
                       </div>
                     </div>
 
@@ -513,7 +499,7 @@ const AdminDashboard: React.FC<DashboardProps> = ({
                          <ShieldCheck size={16} />
                       </div>
                       <p className="text-[10px] font-bold text-brand-red leading-relaxed italic pr-4">
-                        Drive Auto-Sync Aktif: Identitas peserta kini otomatis dikonversi menjadi Link Google Drive di kolom K Spreadsheet Anda. Memudahkan verifikasi tanpa memperberat ukuran file Sheets.
+                        Drive Auto-Sync Aktif: Jika kolom Identitas Anda berwarna Merah dan bertuliskan ERROR AUTH, silakan jalankan fungsi triggerAuth di Apps Script.
                       </p>
                     </div>
                   </div>
@@ -529,9 +515,6 @@ const AdminDashboard: React.FC<DashboardProps> = ({
               <button onClick={() => setPreviewImage(null)} className="absolute -top-12 right-0 p-2 text-white/50 hover:text-white transition-colors"><X size={32} /></button>
               <div className="bg-navy-900 p-2 rounded-[2.5rem] border border-white/10 shadow-2xl">
                  <img src={previewImage} className="w-full h-auto max-h-[80vh] object-contain rounded-[2rem]" alt="Identity Preview" />
-              </div>
-              <div className="mt-6 text-center">
-                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Document Inspection Mode</p>
               </div>
            </div>
         </div>

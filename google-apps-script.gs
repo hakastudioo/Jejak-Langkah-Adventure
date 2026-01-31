@@ -1,16 +1,19 @@
 
 /**
  * JEJAK LANGKAH ADVENTURE - CLOUD SYNC ENGINE
- * Versi: 10.2 (Enhanced Drive Auth & Error Handling)
+ * Versi: 10.3 (Enhanced Drive Auth & Scope Detection)
  * 
- * PENTING: Jika muncul error "Izin DriveApp", silakan jalankan fungsi 
- * 'triggerAuth' secara manual di Editor Script satu kali.
+ * SCRIPT INI MEMBUTUHKAN AKSES KE:
+ * 1. Google Sheets (Untuk Database)
+ * 2. Google Drive (Untuk Penyimpanan Foto KTP)
+ * 
+ * @NotOnlyCurrentDoc
  */
 
-// Fungsi dummy untuk memicu prompt otorisasi Drive saat pertama kali dijalankan
+// Fungsi untuk memicu prompt otorisasi Drive secara paksa
 function triggerAuth() {
-  DriveApp.getRootFolder();
-  Logger.log("Otorisasi Drive Berhasil");
+  const root = DriveApp.getRootFolder();
+  Logger.log("Sistem terhubung ke Drive: " + root.getName());
 }
 
 function doGet(e) {
@@ -47,7 +50,6 @@ function doPost(e) {
 
 /**
  * Konversi Base64 ke File Google Drive
- * Membutuhkan Izin: https://www.googleapis.com/auth/drive
  */
 function saveBase64ToFile(identityData, fileName) {
   if (!identityData || identityData === "-" || identityData === "" || !identityData.toString().includes("base64,")) {
@@ -58,7 +60,7 @@ function saveBase64ToFile(identityData, fileName) {
     const folderName = "JEJAK_LANGKAH_DOKUMEN";
     let folder;
     
-    // Cari folder atau buat baru jika tidak ada
+    // Cari folder atau buat baru
     const folders = DriveApp.getFoldersByName(folderName);
 
     if (folders.hasNext()) {
@@ -76,17 +78,19 @@ function saveBase64ToFile(identityData, fileName) {
     // Simpan ke Drive
     const file = folder.createFile(blob);
     
-    // Set izin agar link bisa dibuka oleh siapa saja yang memiliki link (Admin)
+    // Set izin agar link bisa dibuka Admin
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
     return file.getUrl();
   } catch (e) {
-    console.error("Drive API Error: " + e.toString());
-    // Jika error izin, berikan instruksi di dalam cell spreadsheet
-    if (e.toString().includes("izin") || e.toString().includes("permission")) {
-      return "ERROR: Butuh Otorisasi Drive di Apps Script";
+    const errorStr = e.toString();
+    console.error("Drive API Error: " + errorStr);
+    
+    // Deteksi error izin khusus
+    if (errorStr.includes("izin") || errorStr.includes("permission") || errorStr.includes("Authorization")) {
+      return "ERROR: Buka Apps Script -> Pilih fungsi 'triggerAuth' -> Klik 'Run' untuk izinkan Drive.";
     }
-    return "Error Upload: " + e.toString();
+    return "Error Upload: " + errorStr;
   }
 }
 
@@ -134,13 +138,11 @@ function handleNewRegistration(payload) {
     const ss = SpreadsheetApp.openById(ssId);
     const sheet = getOrCreateSheet(ss, "Pendaftaran");
 
-    // PROSES UPLOAD KE DRIVE
     const fileName = "KTP_" + reg.fullName.replace(/\s+/g, '_') + "_" + reg.id;
     const driveUrl = saveBase64ToFile(reg.identityImage, fileName);
 
     const nextRow = sheet.getLastRow() + 1;
     
-    // Append Data
     sheet.appendRow([
       reg.id,
       reg.timestamp,
@@ -159,7 +161,6 @@ function handleNewRegistration(payload) {
       reg.id.toString().slice(-6)
     ]);
 
-    // Format Kolom K (Kolom ke-11)
     const cell = sheet.getRange(nextRow, 11);
     if (driveUrl && driveUrl.startsWith('http')) {
       cell.setFormula('=HYPERLINK("' + driveUrl + '"; "BUKA DOKUMEN")');
@@ -169,7 +170,7 @@ function handleNewRegistration(payload) {
           .setHorizontalAlignment("center");
     } else {
       cell.setValue(driveUrl || "-");
-      cell.setFontColor("#ff0000");
+      cell.setFontColor("#ff0000").setFontWeight("bold");
     }
 
     return createResponse({ status: 'success', message: 'Registration Recorded' });
