@@ -1,7 +1,7 @@
 
 /**
  * JEJAK LANGKAH ADVENTURE - CLOUD SYNC ENGINE
- * Versi: 10.3 (Enhanced Drive Auth & Scope Detection)
+ * Versi: 10.4 (Optimized Drive Sharing & Link Formula)
  * 
  * SCRIPT INI MEMBUTUHKAN AKSES KE:
  * 1. Google Sheets (Untuk Database)
@@ -49,7 +49,7 @@ function doPost(e) {
 }
 
 /**
- * Konversi Base64 ke File Google Drive
+ * Konversi Base64 ke File Google Drive dengan Izin Publik
  */
 function saveBase64ToFile(identityData, fileName) {
   if (!identityData || identityData === "-" || identityData === "" || !identityData.toString().includes("base64,")) {
@@ -62,23 +62,25 @@ function saveBase64ToFile(identityData, fileName) {
     
     // Cari folder atau buat baru
     const folders = DriveApp.getFoldersByName(folderName);
-
     if (folders.hasNext()) {
       folder = folders.next();
     } else {
       folder = DriveApp.createFolder(folderName);
+      // Set folder agar bisa diakses (viewer) oleh siapa saja yang punya link
+      folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     }
 
     // Ekstrak data base64
     const splitData = identityData.split("base64,");
     const contentType = splitData[0].split(":")[1].split(";")[0];
+    const extension = contentType.split("/")[1] || "png";
     const bytes = Utilities.base64Decode(splitData[1]);
-    const blob = Utilities.newBlob(bytes, contentType, fileName);
+    const blob = Utilities.newBlob(bytes, contentType, fileName + "." + extension);
 
     // Simpan ke Drive
     const file = folder.createFile(blob);
     
-    // Set izin agar link bisa dibuka Admin
+    // Set izin file agar link bisa dibuka Admin/Publik
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
     return file.getUrl();
@@ -86,9 +88,8 @@ function saveBase64ToFile(identityData, fileName) {
     const errorStr = e.toString();
     console.error("Drive API Error: " + errorStr);
     
-    // Deteksi error izin khusus
     if (errorStr.includes("izin") || errorStr.includes("permission") || errorStr.includes("Authorization")) {
-      return "ERROR: Buka Apps Script -> Pilih fungsi 'triggerAuth' -> Klik 'Run' untuk izinkan Drive.";
+      return "ERROR: Butuh Otorisasi Drive. Buka Apps Script, jalankan fungsi 'triggerAuth'.";
     }
     return "Error Upload: " + errorStr;
   }
@@ -154,7 +155,7 @@ function handleNewRegistration(payload) {
       reg.startDate,
       reg.endDate || "-",
       reg.climberCode || "-",
-      "", // Kolom K (Identitas)
+      "", // Kolom K (Identitas) - Akan diisi formula di bawah
       reg.packageCategory,
       reg.tripPackage,
       reg.status || "Menunggu Verifikasi",
@@ -163,7 +164,8 @@ function handleNewRegistration(payload) {
 
     const cell = sheet.getRange(nextRow, 11);
     if (driveUrl && driveUrl.startsWith('http')) {
-      cell.setFormula('=HYPERLINK("' + driveUrl + '"; "BUKA DOKUMEN")');
+      // PENTING: Gunakan koma (,) di setFormula, bukan titik koma (;)
+      cell.setFormula('=HYPERLINK("' + driveUrl + '", "BUKA DOKUMEN")');
       cell.setFontColor("#e11d48")
           .setFontWeight("bold")
           .setUnderline(true)
